@@ -62,7 +62,7 @@ class JLineIOReader(in: java.io.InputStream,
       if (history ne NoHistory)
         this setHistory history
 
-      if (completion ne NoCompletion) {
+      if (completion!=null && (completion ne NoCompletion)) {
         val argCompletor: ArgumentCompleter =
           new ArgumentCompleter(new JLineDelimiter, scalaToJline(completion.completer()))
         argCompletor setStrict false

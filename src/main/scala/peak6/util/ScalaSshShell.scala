@@ -27,6 +27,8 @@ import scala.reflect.Manifest
 import scala.concurrent.ops.spawn
 import scala.tools.nsc.interpreter.TypeStrings
 
+import java.io.{BufferedReader,StringReader,PipedWriter,PipedReader}
+
 class ScalaSshShell(val port: Int, val name: String,
                     val user: String, val passwd: String,
                     val keysResourcePath: Option[String]) extends Shell {
@@ -135,44 +137,72 @@ trait Shell {
             pw.write("Connected to %s, starting repl...\n".format(name))
             pw.flush()
 
-            val il = new scala.tools.nsc.interpreter.SshILoop(None, pw)
-            il.setPrompt(name + "> ")
-            il.settings = new scala.tools.nsc.Settings()
-            il.settings.embeddedDefaults(getClass.getClassLoader)
-            il.settings.usejavacp.value = true
-            il.createInterpreter()
+            val jl=new scala.tools.nsc.interpreter.JLineIOReader(
+                           in,
+                           out,
+                           null)
 
-            il.in = new scala.tools.nsc.interpreter.JLineIOReader(
-              in,
-              out,
-              new scala.tools.nsc.interpreter.JLineCompletion(il.intp))
+            Iterator.continually(jl.readLine("> ")).takeWhile(_!=null).foreach(sLine=>{
+              println(sLine)
+              
+            })
+// var i:Int=0
+// try{
+// while({i=in.read();i>5})
+//          {             
+//             val c=i.toChar
+//              println(i)
+//              pw.write(c)
+//             pw.flush()
+//          }
+// }catch 
+// {
+//   case e:Exception => println(e)
+// }
+            //val il = new scala.tools.nsc.interpreter.SshILoop(None, pw)
+            
+            // val il = new org.apache.spark.repl.SparkILoop(new scala.tools.nsc.interpreter.JLineIOReader(
+            //    in,
+            //    out,
+            //    null), pw)
 
-            if (il.intp.reporter.hasErrors) {
-              logger.error("Got errors, abandoning connection")
-              return
-            }
+            // il.setPrompt(name + "> ")
+            // il.settings = new scala.tools.nsc.Settings()
+            // il.settings.embeddedDefaults(getClass.getClassLoader)
+            // il.settings.usejavacp.value = true
+            // il.createInterpreter()
 
-            il.printWelcome()
-            try {
-              il.intp.initialize()
-              il.intp.beQuietDuring {
-                il.intp.bind("stdout", pw)
-                for ((bname, btype, bval) <- bindings)
-                  il.bind(bname, btype, bval)
-              }
-              il.intp.quietRun(
-                """def println(a: Any) = {
-                  stdout.write(a.toString)
-                stdout.write('\n')
-                }""")
-              il.intp.quietRun(
-                """def exit = println("Use ctrl-D to exit shell.")""")
+            // il.in = new scala.tools.nsc.interpreter.JLineIOReader(
+            //   in,
+            //   out,
+            //   new scala.tools.nsc.interpreter.JLineCompletion(il.intp))
 
-              il.loop()
-            } catch {
-              case e: Exception =>
-                logger.error("Unhandled exception:", e)
-            } finally il.closeInterpreter()
+            // if (il.intp.reporter.hasErrors) {
+            //   logger.error("Got errors, abandoning connection")
+            //   return
+            // }
+
+            // il.printWelcome()
+            // try {
+            //   il.intp.initialize()
+            //   il.intp.beQuietDuring {
+            //     il.intp.bind("stdout", pw)
+            //     for ((bname, btype, bval) <- bindings)
+            //       il.bind(bname, btype, bval)
+            //   }
+            //   il.intp.quietRun(
+            //     """def println(a: Any) = {
+            //       stdout.write(a.toString)
+            //     stdout.write('\n')
+            //     }""")
+            //   il.intp.quietRun(
+            //     """def exit = println("Use ctrl-D to exit shell.")""")
+
+            //   il.loop()
+            // } catch {
+            //   case e: Exception =>
+            //     logger.error("Unhandled exception:", e)
+            // } finally il.closeInterpreter()
 
             logger.info("Exited repl, closing ssh.")
             pw.write("Bye.\r\n")
@@ -197,16 +227,16 @@ trait Shell {
 
 object ScalaSshShell {
   def main(args: Array[String]) {
-    val sshd = new ScalaSshShell(port=4444, name="test", user="user",
-                                 passwd="fluke",
+    val sshd = new ScalaSshShell(port=4444, name="test", user="uaa",
+                                 passwd="uaa",
                                  keysResourcePath=Some("/test.ssh.keys"))
     sshd.bind("pi", 3.1415926)
     sshd.bind("nums", Vector(1,2,3,4,5))
     spawn {
       sshd.start()
     }
-    //new java.util.Scanner(System.in) nextLine()
-    Thread.sleep(60000)
+    new java.util.Scanner(System.in) nextLine()
+    //Thread.sleep(60000)
     sshd.stop()
   }
 
